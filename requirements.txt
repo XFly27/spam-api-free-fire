@@ -1,0 +1,6 @@
+Flask
+requests
+gunicorn
+pycryptodome
+psycopg2
+dotenv
