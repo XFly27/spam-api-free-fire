@@ -1,3 +1,5 @@
 .env
 .idea/
  __pycache__
+__pycache__/like_count_pb2.cpython-312.pyc
+__pycache__/uid_generator_pb2.cpython-312.pyc
