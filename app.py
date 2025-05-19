@@ -100,7 +100,7 @@ def send_requests():
         return jsonify({"error": "No valid tokens found in database"}), 500
 
     try:
-        player_info = asyncio.run(detect_player_info(uid, tokens[1]))
+        player_info = asyncio.run(detect_player_info(uid, tokens[3]))
     except Exception as e:
         return jsonify({"error": f"Error detecting player: {str(e)}"}), 404
 
