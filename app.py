@@ -2,9 +2,9 @@ from flask import Flask, request, jsonify
 import requests
 import threading
 from byte import Encrypt_ID, encrypt_api
-import psycopg2
 from datetime import datetime, timezone
 import os
+import json
 from dotenv import load_dotenv
 import logging
 import like_count_pb2
@@ -17,7 +17,6 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 import uid_generator_pb2
 
-
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Initialisation
@@ -26,33 +25,27 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
-
 SERVERS = ["ID"]
+TOKENS_FILE = "tokens.json"
 
 class TokenManager:
     def __init__(self):
-        self.db_url = os.getenv("DATABASE_URL")
         self.lock = threading.Lock()
 
     def get_valid_tokens(self, server_key="ID"):
         with self.lock:
             try:
-                conn = psycopg2.connect(self.db_url)
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT token FROM tokens 
-                    WHERE server_key = %s 
-                    AND expires_at > NOW() AT TIME ZONE 'UTC'
-                    AND is_valid = TRUE
-                    ORDER BY last_refresh DESC
-                ''', (server_key,))
-                return [row[0] for row in cursor.fetchall()]
-            except psycopg2.Error as e:
-                logger.error(f"Erreur lors de la récupération des tokens : {e}")
+                with open(TOKENS_FILE, "r") as f:
+                    tokens_data = json.load(f)
+                now = datetime.utcnow().isoformat()
+                valid_tokens = [
+                    t["token"] for t in tokens_data
+                    if t["server_key"] == server_key and t["is_valid"] and t["expires_at"] > now
+                ]
+                return valid_tokens
+            except Exception as e:
+                logger.error(f"Error loading tokens from JSON: {e}")
                 return []
-            finally:
-                if 'conn' in locals():
-                    conn.close()
 
 token_manager = TokenManager()
 
@@ -76,7 +69,7 @@ def send_friend_request(uid, token, results):
     payload = f"08a7c4839f1e10{encrypted_id}1801"
     encrypted_payload = encrypt_api(payload)
 
-    url = "https://client.ind.freefiremobile.com/RequestAddingFriend"
+    url = "https://clientbp.ggblueshark.com/RequestAddingFriend"
     headers = get_headers(token)
 
     try:
@@ -95,12 +88,12 @@ def send_requests():
     if not uid:
         return jsonify({"error": "uid parameter is required"}), 400
 
-    tokens = token_manager.get_valid_tokens("IND")
+    tokens = token_manager.get_valid_tokens("ID")
     if not tokens:
-        return jsonify({"error": "No valid tokens found in database"}), 500
+        return jsonify({"error": "No valid tokens found"}), 500
 
     try:
-        player_info = asyncio.run(detect_player_info(uid, tokens[3]))
+        player_info = asyncio.run(detect_player_info(uid, tokens[0]))
     except Exception as e:
         return jsonify({"error": f"Error detecting player: {str(e)}"}), 404
 
@@ -133,7 +126,7 @@ def send_requests():
     })
 
 async def detect_player_info(uid: str, token: str):
-    url = "https://client.ind.freefiremobile.com/GetPlayerPersonalShow"
+    url = "https://clientbp.ggblueshark.com/GetPlayerPersonalShow"
     payload = bytes.fromhex(encode_uid(uid))
     response = await async_post_request(url, payload, token)
     if response:
@@ -161,8 +154,6 @@ def decode_info(data: bytes):
     except Exception as e:
         logger.error(f"Unexpected error during protobuf decoding: {e}")
         return None
-
-# ========== UTILITAIRES ==========
 
 def encrypt_aes(data: bytes) -> str:
     key = b'Yg&tc%DEuh6%Zc^8'
