@@ -27,14 +27,14 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 
-SERVERS = ["IND"]
+SERVERS = ["ID"]
 
 class TokenManager:
     def __init__(self):
         self.db_url = os.getenv("DATABASE_URL")
         self.lock = threading.Lock()
 
-    def get_valid_tokens(self, server_key="IND"):
+    def get_valid_tokens(self, server_key="ID"):
         with self.lock:
             try:
                 conn = psycopg2.connect(self.db_url)
@@ -62,7 +62,7 @@ def get_headers(token: str):
         "Authorization": f"Bearer {token}",
         "X-Unity-Version": "2018.4.11f1",
         "X-GA": "v1 1",
-        "ReleaseVersion": "OB48",
+        "ReleaseVersion": "OB49",
         "Content-Type": "application/x-www-form-urlencoded",
         "Content-Length": "16",
         "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 9; SM-N975F Build/PI)",
